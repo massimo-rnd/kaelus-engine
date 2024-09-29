@@ -111,4 +111,4 @@ Feel free to reach out if you have any questions or suggestions!
 ---
 
 ## Projects using kaelus-engine</h2>
-(In chronological order)
+[KAELUS](https://github.com/druffko/kaelus)
