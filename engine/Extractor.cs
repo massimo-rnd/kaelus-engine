@@ -7,6 +7,8 @@ using kaleidolib.lib;
 using System.ComponentModel.DataAnnotations;
 using System.Text.RegularExpressions;
 using System.Xml;
+using System.Threading.Tasks;
+using System.Text;
 
 namespace kaelusengine.engine
 {
@@ -17,7 +19,7 @@ namespace kaelusengine.engine
         internal static Boolean savetoFile;
         internal static String filePath;
 
-        //List to store all found email addresses
+        // List to store all found email addresses
         internal static HashSet<string> foundEmails = new HashSet<string>();
 
         #endregion
@@ -52,7 +54,7 @@ namespace kaelusengine.engine
             DisplayCollectedEmails();
         }
 
-        // Method to scan for links on the page
+        // Method to scan for links on the page and extract emails
         internal static void ScanLinks(String url)
         {
             List<string> links = new List<string>();
@@ -84,57 +86,105 @@ namespace kaelusengine.engine
                 }
             }
 
-            // Scan each link for email addresses
-            foreach (string link in links)
+            // Process each link to extract email addresses
+            foreach (var link in links)
             {
-                Console.WriteLine(kaleidolib.lib.Formatting.dim($"Scanning {link} for email addresses..."));
-                string content = FetchPageContent(link);
-                if (!string.IsNullOrEmpty(content))
+                Console.WriteLine($"Processing link: {link}");
+
+                // Fetch the page content for each link or decode it if it's obfuscated
+                if (link.Contains("/cdn-cgi/l/email-protection#"))
                 {
-                    GetMails(content);
+                    // Extract and decode the email from the URL fragment
+                    string encodedEmail = link.Split('#').Last();
+                    string decodedEmail = DecodeCloudflareEmail(encodedEmail);
+
+                    if (!foundEmails.Contains(decodedEmail))
+                    {
+                        foundEmails.Add(decodedEmail);
+                        Console.WriteLine(Color.green($"Decoded Cloudflare email from URL: {decodedEmail}"));
+                    }
+                }
+                else
+                {
+                    // Fetch page content normally if not Cloudflare protected
+                    string linkContent = FetchPageContent(link);
+
+                    if (!string.IsNullOrEmpty(linkContent))
+                    {
+                        // Process the HTML to extract email addresses
+                        ProcessHtml(linkContent);
+                    }
                 }
             }
         }
 
-        // Method to fetch the page content
-        internal static string FetchPageContent(string url)
+        // Fetch page content using HtmlAgilityPack
+        private static string FetchPageContent(string url)
         {
             try
             {
-                using (HttpClient client = new())
-                {
-                    HttpResponseMessage response = client.GetAsync(url).Result;
-                    if (response.IsSuccessStatusCode)
-                    {
-                        return response.Content.ReadAsStringAsync().Result;
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Failed to fetch {url}");
-                    }
-                }
+                var web = new HtmlWeb();
+                var doc = web.Load(url);
+                return doc.Text;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error fetching page content: {ex.Message}");
+                Console.WriteLine(Color.red($"An error occurred while loading the page: {ex.Message}"));
+                return string.Empty;
             }
-            return string.Empty;
         }
 
-        // Method to collect emails found on a page
-        internal static void GetMails(String sourceCode)
+        // Method to decode Cloudflare obfuscated emails
+        private static string DecodeCloudflareEmail(string encoded)
         {
-            string emailPattern = @"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b";
+            int r = Convert.ToInt32(encoded.Substring(0, 2), 16);
+            StringBuilder decodedEmail = new StringBuilder();
 
-            // Use Regex.Matches to find all occurrences of email addresses in the input string
-            MatchCollection matches = Regex.Matches(sourceCode, emailPattern, RegexOptions.IgnoreCase);
-
-            if (matches.Count > 0)
+            for (int i = 2; i < encoded.Length; i += 2)
             {
-                foreach (Match match in matches)
+                int c = Convert.ToInt32(encoded.Substring(i, 2), 16) ^ r;
+                decodedEmail.Append((char)c);
+            }
+
+            return decodedEmail.ToString();
+        }
+
+        // Process HTML to extract both standard and obfuscated emails
+        private static void ProcessHtml(string html)
+        {
+            var doc = new HtmlDocument();
+            doc.LoadHtml(html);
+
+            // Use regular expressions to find email addresses
+            var emailRegex = new Regex(@"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}");
+            var matches = emailRegex.Matches(html);
+
+            foreach (Match match in matches)
+            {
+                string email = match.Value;
+                if (!foundEmails.Contains(email))
                 {
-                    // Add to the HashSet to ensure uniqueness
-                    foundEmails.Add(match.Value);
+                    foundEmails.Add(email);
+                    Console.WriteLine(Color.green($"Found email: {email}"));
+                }
+            }
+
+            // Look for Cloudflare obfuscated emails (data-cfemail attribute)
+            var obfuscatedEmailNodes = doc.DocumentNode.SelectNodes("//a[@data-cfemail]");
+            if (obfuscatedEmailNodes != null)
+            {
+                foreach (var node in obfuscatedEmailNodes)
+                {
+                    var encodedEmail = node.GetAttributeValue("data-cfemail", null);
+                    if (!string.IsNullOrEmpty(encodedEmail))
+                    {
+                        string decodedEmail = DecodeCloudflareEmail(encodedEmail);
+                        if (!foundEmails.Contains(decodedEmail))
+                        {
+                            foundEmails.Add(decodedEmail);
+                            Console.WriteLine(Color.green($"Decoded Cloudflare email: {decodedEmail}"));
+                        }
+                    }
                 }
             }
         }
@@ -173,10 +223,9 @@ namespace kaelusengine.engine
 
             //create file
             filePath = timeStamp + "-output.txt";
-            using (StreamWriter sw = File.CreateText(filePath));
+            using (StreamWriter sw = File.CreateText(filePath)) ;
         }
 
         #endregion
-
     }
 }

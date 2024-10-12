@@ -16,6 +16,8 @@
   <h1>KAELUS Engine</h1>
   <p>
     KAELUS-Engine is the ultimate C# commandline tool that enables you to extract email addresses from any website.
+    <br><br>
+    <b>Now with Cloudflare E-Mail Protection bypass ;)</b>
   </p>
 </div>
 
@@ -39,6 +41,8 @@ KAELUS-Engine is the ultimate C# commandline tool that enables you to extract em
 
 By automatically scanning the source code of each and every link with the same host domain it is able to find email addresses that are listed on said domain, without having to go through them manually.
 
+**Now with Cloudflare E-Mail Protection bypass ;)**
+
 ---
 
 ## Features
@@ -48,6 +52,7 @@ By automatically scanning the source code of each and every link with the same h
 - ✅ Works on Windows, macOS and Linux
 - ✅ Show results on CLI
 - ✅ Save results to text file
+- ✅ NEW: Decode Cloudflare "encrypted" E-Mail-Addresses ;)
 
 ---
 
