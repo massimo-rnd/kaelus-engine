@@ -58,12 +58,6 @@ Just enter the website URL you want to scan. After that, you will be asked, if y
 
 If your domain is "broken", kaelus-engine will "fix" it automatically.
 
-## 🚧 Roadmap
-
-- [ ] Something big ;)
-
-Check out the [open issues](https://github.com/massimo-rnd/kaelus-engine/issues) for more.
-
 ## 🤝 Contributing
 
 Contributions, issues, and feature requests are welcome!  
