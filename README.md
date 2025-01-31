@@ -1,4 +1,4 @@
-![Repo-Image](https://massimo.gg/github-images/kaelus.webp)
+[Looking for a GUI version?](https://github.com/massimo-rnd/kaelus)
 
 <div align="center">
 
